@@ -1,0 +1,170 @@
+wget 
+raw.githubusercontent.com/pytorch/pytorch/5c6af2b583709f6176898c017424dc9981023c28/.ci/docker/
+common/install_cusparselt.sh ;
+export CUDA_VERSION=12.1 # as an example ;  
+bash ./install_cusparselt.sh
+wget: missing URL
+Usage: wget [OPTION]... [URL]...
+
+Try `wget --help' for more options.
+bash: raw.githubusercontent.com/pytorch/pytorch/5c6af2b583709f6176898c017424dc9981023c28/.ci/docker/: No such file or directory
+bash: common/install_cusparselt.sh: No such file or directory
+bash: ./install_cusparselt.sh: No such file or directory
+
+sudo env CUDA_VERSION="$CUDA_VERSION" bash ./install_cusparselt.sh
++ mkdir tmp_cusparselt
+mkdir: cannot create directory ‘tmp_cusparselt’: File exists
++ [[ 12.6 =~ ^12\.[1-4]$ ]]
++ [[ 12.6 == \1\1\.\8 ]]
++ tar xf .tar.xz
+tar: .tar.xz: Cannot open: No such file or directory
+tar: Error is not recoverable: exiting now
+
+wget https://developer.download.nvidia.com/compute/cusparselt/0.8.1/local_installers/cusparselt-local-tegra-repo-ubuntu2204-0.8.1_0.8.1-1_arm64.deb
+
+sudo dpkg -i cusparselt-local-tegra-repo-ubuntu2204-0.8.1_0.8.1-1_arm64.deb
+
+sudo cp /var/cusparselt-local-tegra-repo-ubuntu2204-0.8.1/*-keyring.gpg /usr/share/keyrings/
+
+sudo apt-get update
+
+sudo apt-get install -y cusparselt-cuda-12
+
+ldconfig -p | grep libcusparseLt
+
+dpkg-query -W nvidia-jetpack
+
+nvcc --version
+
+python3 --version
+
+kiuchi@kiuchi-jetson:~$ dpkg-query -W nvidia-jetpack
+dpkg-query: no packages found matching nvidia-jetpack
+kiuchi@kiuchi-jetson:~$ nvcc --version
+bash: nvcc: command not found
+kiuchi@kiuchi-jetson:~$ python3 --version
+Python 3.10.12
+
+uname -m ;
+cat /etc/nv_tegra_release ;
+dpkg-query -W nvidia-l4t-core ;
+ls -l /usr/local/cuda* ;
+apt-cache policy nvidia-jetpack
+
+uname -m ;
+cat /etc/nv_tegra_release ;
+dpkg-query -W nvidia-l4t-core ;
+ls -l /usr/local/cuda* ;
+apt-cache policy nvidia-jetpack
+aarch64
+# R36 (release), REVISION: 5.2, GCID: 46426093, BOARD: generic, EABI: aarch64, DATE: Thu Jul 16 18:56:22 UTC 2026
+# KERNEL_VARIANT: oot
+TARGET_USERSPACE_LIB_DIR=nvidia
+TARGET_USERSPACE_LIB_DIR_PATH=usr/lib/aarch64-linux-gnu/nvidia
+nvidia-l4t-core	36.5.2-20260716114719
+lrwxrwxrwx  1 root root   22 10月 19 14:48 /usr/local/cuda -> /etc/alternatives/cuda
+lrwxrwxrwx  1 root root   25 10月 19 14:48 /usr/local/cuda-12 -> /etc/alternatives/cuda-12
+
+/usr/local/cuda-12.6:
+total 116
+drwxr-xr-x 3 root root  4096 10月 19 14:56 bin
+drwxr-xr-x 3 root root  4096 10月 19 14:53 compute-sanitizer
+drwxr-xr-x 3 root root  4096 10月 19 14:54 doc
+-rw-r--r-- 1 root root   160  8月 15  2024 DOCS
+-rw-r--r-- 1 root root 63021  8月 15  2024 EULA.txt
+drwxr-xr-x 4 root root  4096 10月 19 14:53 extras
+drwxr-xr-x 3 root root  4096 10月 19 14:56 gds
+lrwxrwxrwx 1 root root    29  7月 16  2024 include -> targets/aarch64-linux/include
+lrwxrwxrwx 1 root root    25  7月 16  2024 lib64 -> targets/aarch64-linux/lib
+drwxr-xr-x 3 root root  4096 10月 19 14:56 nvml
+drwxr-xr-x 6 root root  4096 10月 19 14:53 nvvm
+-rw-r--r-- 1 root root   524  8月 15  2024 README
+drwxr-xr-x 3 root root  4096 10月 19 14:53 share
+drwxr-xr-x 3 root root  4096 10月 19 14:46 targets
+drwxr-xr-x 2 root root  4096 10月 19 14:53 tools
+-rw-r--r-- 1 root root  2482  8月 28  2024 version.json
+nvidia-jetpack:
+  Installed: (none)
+  Candidate: 6.2.3+b81
+  Version table:
+     6.2.3+b81 600
+        600 https://repo.download.nvidia.com/jetson/common r36.5/main arm64 Packages
+     6.2.2+b24 600
+        600 https://repo.download.nvidia.com/jetson/common r36.5/main arm64 Packages
+
+
+ls -l /usr/local/cuda-12.6/bin/nvcc
+export PATH=/usr/local/cuda-12.6/bin:$PATH
+
+echo 'export PATH=/usr/local/cuda-12.6/bin:$PATH' >> ~/.bashrc
+
+dpkg -l | grep cusparselt
+ldconfig -p | grep libcusparseLt
+
+echo "===== CUDA ====="
+ls -l /usr/local/cuda-12.6/bin/nvcc
+readlink -f /usr/local/cuda
+
+echo "===== CUDA PACKAGE ====="
+dpkg -l | grep -E 'cuda-nvcc|cuda-toolkit'
+
+echo "===== cuSPARSELt ====="
+dpkg -l | grep cusparselt
+
+echo "===== cuDNN ====="
+dpkg -l | grep cudnn
+
+echo "===== GPU ====="
+ls -l /dev/nvhost-gpu
+
+===== CUDA =====
+-rwxr-xr-x 1 root root 16370032  8月 15  2024 /usr/local/cuda-12.6/bin/nvcc
+/usr/local/cuda-12.6
+===== CUDA PACKAGE =====
+ii  cuda-nvcc-12-6                                           12.6.68-1                                        arm64        CUDA nvcc
+ii  cuda-toolkit-12-6                                        12.6.11-1                                        arm64        CUDA Toolkit 12.6 meta-package
+ii  cuda-toolkit-12-6-config-common                          12.6.68-1                                        all          Common config package for CUDA Toolkit 12.6.
+ii  cuda-toolkit-12-config-common                            12.6.68-1                                        all          Common config package for CUDA Toolkit 12.
+ii  cuda-toolkit-config-common                               12.6.68-1                                        all          Common config package for CUDA Toolkit.
+===== cuSPARSELt =====
+ii  cusparselt-cuda-12                                       0.8.1.1-1                                        arm64        CUSPARSE Lt
+ii  cusparselt-local-tegra-repo-ubuntu2204-0.8.1             0.8.1-1                                          arm64        cusparselt-local-tegra repository configuration files
+ii  libcusparselt0-cuda-12                                   0.8.1.1-1                                        arm64        CUSPARSE Lt native runtime libraries
+ii  libcusparselt0-dev-cuda-12                               0.8.1.1-1                                        arm64        CUSPARSE Lt native dev links, headers
+===== cuDNN =====
+ii  cudnn-local-tegra-repo-ubuntu2204-9.3.0                  1.0-1                                            arm64        cudnn-local-tegra repository configuration files
+ii  cudnn9-cuda-12-6                                         9.3.0.75-1                                       arm64        NVIDIA cuDNN for CUDA 12.6
+ii  libcudnn9-cuda-12                                        9.3.0.75-1                                       arm64        cuDNN runtime libraries for CUDA 12.6
+ii  libcudnn9-dev-cuda-12                                    9.3.0.75-1                                       arm64        cuDNN development headers and symlinks for CUDA 12.6
+ii  libcudnn9-samples                                        9.3.0.75-1                                       all          cuDNN samples
+ii  libcudnn9-static-cuda-12                                 9.3.0.75-1                                       arm64        cuDNN static libraries for CUDA 12.6
+===== GPU =====
+crw-rw---- 1 root video 505, 1  9月 30 10:54 /dev/nvhost-gpu
+
+echo 'export PATH=/usr/local/cuda-12.6/bin:$PATH' >> ~/.bashrc
+echo 'export CUDA_HOME=/usr/local/cuda-12.6' >> ~/.bashrc
+
+sudo apt update
+sudo apt install -y \
+    python3-pip \
+    python3-venv \
+    libopenblas-dev \
+    libopenmpi-dev \
+    libomp-dev
+
+python3 -m venv ~/pytorch-env
+source ~/pytorch-env/bin/activate
+
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install numpy==1.26.4
+
+python -m pip install --no-cache-dir \
+    torch==2.8.0 \
+    torchvision==0.23.0 \
+    --index-url https://pypi.jetson-ai-lab.io/jp6/cu126
+
+uv add "numpy==1.26.4"
+uv add "torch==2.8.0" "torchvision==0.23.0" \
+    --index jetson=https://pypi.jetson-ai-lab.io/jp6/cu126
+
+python -c "import torch; print('PyTorch:', torch.__version__); print('CUDA:', torch.version.cuda); print('GPU Available:', torch.cuda.is_available())"
