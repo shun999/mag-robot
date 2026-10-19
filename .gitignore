@@ -13,3 +13,4 @@ calibration/
 dist/
 *.egg-info/
 error.txt
+camtest.ipynb
