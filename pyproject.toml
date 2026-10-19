@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dino-ingot"
+version = "0.1.0"
+description = "USB camera ingot inspection with frozen DINOv3 features and an SVM"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+  "numpy>=1.26,<2",
+  "opencv-python>=4.8,<4.12",
+  "scikit-learn>=1.5,<1.8",
+  "joblib>=1.4,<2",
+]
+
+# Jetson CUDA wheels depend on JetPack. Install torch separately with uv pip;
+# keeping it out of this dependency graph prevents replacement by a CPU wheel.
+[dependency-groups]
+dev = ["pytest>=8,<9", "ruff>=0.11,<1"]
+
+[project.scripts]
+ingot = "dino_ingot.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dino_ingot"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

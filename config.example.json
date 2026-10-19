@@ -1,0 +1,13 @@
+{
+  "camera": {"source": 0, "width": 1280, "height": 720, "fps": 30},
+  "extraction": {
+    "roi": null,
+    "threshold": 35,
+    "min_area": 2000,
+    "kernel_size": 3,
+    "margin": 0.05
+  },
+  "features": {"input_size": 256},
+  "background": null,
+  "background_sha256": null
+}

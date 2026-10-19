@@ -1,1 +1,14 @@
 AGENTS.md
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.uv-cache/
+data/
+models/
+weights/
+vendor/
+calibration/
+dist/
+*.egg-info/
