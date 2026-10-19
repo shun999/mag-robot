@@ -12,3 +12,4 @@ vendor/
 calibration/
 dist/
 *.egg-info/
+error.txt
