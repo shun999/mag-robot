@@ -6,6 +6,7 @@ import json
 import subprocess
 import sys
 import time
+from contextlib import nullcontext
 from pathlib import Path
 
 import cv2
@@ -146,7 +147,13 @@ def train_command(args) -> None:
 
 def infer(args) -> None:
     from .training import load_bundle, verify_extractor
+    from .ur3 import WristController, load_ur3_config
 
+    ur3_path = getattr(args, "ur3_config", None)
+    dry_run = getattr(args, "ur3_dry_run", False)
+    if dry_run and ur3_path is None:
+        raise ValueError("--ur3-dry-run には --ur3-config が必要です")
+    ur3_config = load_ur3_config(ur3_path) if ur3_path is not None else None
     require_gui()
     config, background, model, metadata = load_bundle(args.model)
     runtime = copy.deepcopy(config)
@@ -159,31 +166,54 @@ def infer(args) -> None:
     window = "Ingot inference"
     print("qで終了。異常スコアは確率ではありません。", flush=True)
     with open_camera(runtime.camera) as camera:
+        controller = None
         try:
-            while True:
-                start = time.perf_counter()
-                frame = read_frame(camera, runtime.camera)
-                region = extract_region(frame, background, config.extraction)
-                text = region.status
-                if region.status == "OK":
-                    vector = extractor.extract(region.crop)[None]
-                    if vector.shape[1] != metadata["feature_dimension"]:
-                        raise ValueError("学習時と特徴量数が異なります")
-                    label = int(model.predict(vector)[0])
-                    score = float(model.decision_function(vector)[0])
-                    text = f"{'ANOMALY' if label == 1 else 'NORMAL'} | score={score:+.3f}"
-                elapsed = (time.perf_counter() - start) * 1000
-                show_inspection(
-                    window,
-                    frame,
-                    region,
-                    config.extraction.roi,
-                    f"{text} | {elapsed:.0f}ms | q=quit",
-                )
-                if quit_requested(window, cv2.waitKey(1) & 0xFF):
-                    break
+            controller = (
+                WristController(ur3_config, dry_run=dry_run) if ur3_config else nullcontext()
+            )
+            with controller as robot:
+                while True:
+                    if robot is not None:
+                        robot.check()
+                    frame_started = time.monotonic()
+                    start = time.perf_counter()
+                    frame = read_frame(camera, runtime.camera)
+                    region = extract_region(frame, background, config.extraction)
+                    verdict = region.status
+                    text = verdict
+                    if region.status == "OK":
+                        vector = extractor.extract(region.crop)[None]
+                        if vector.shape[1] != metadata["feature_dimension"]:
+                            raise ValueError("学習時と特徴量数が異なります")
+                        label = int(model.predict(vector)[0])
+                        if label not in (0, 1):
+                            raise ValueError("推論ラベルは正常=0または異常=1である必要があります")
+                        score = float(model.decision_function(vector)[0])
+                        if not np.isfinite(score):
+                            raise ValueError("異常スコアが有限値ではありません")
+                        verdict = "ANOMALY" if label == 1 else "NORMAL"
+                        text = f"{verdict} | score={score:+.3f}"
+                    elapsed = (time.perf_counter() - start) * 1000
+                    robot_text = ""
+                    if robot is not None:
+                        robot.publish(verdict, frame_started)
+                        robot_text = robot.status()
+                    show_inspection(
+                        window,
+                        frame,
+                        region,
+                        config.extraction.roi,
+                        f"{text} | {elapsed:.0f}ms | q=quit",
+                        **({"extra_text": robot_text} if robot is not None else {}),
+                    )
+                    if quit_requested(window, cv2.waitKey(1) & 0xFF):
+                        break
         except Exception:
-            clear_failure(window)
+            detail = ""
+            if ur3_config is not None:
+                confirmed = controller is not None and controller.stopped_confirmed
+                detail = f"UR3 STOP {'CONFIRMED' if confirmed else 'UNCONFIRMED'} - see terminal"
+            clear_failure(window, **({"detail": detail} if detail else {}))
             raise
 
 
@@ -279,6 +309,8 @@ def parser() -> argparse.ArgumentParser:
     model_args(command)
     command.add_argument("--model", type=Path, default=Path("models/ingot-v1"))
     command.add_argument("--camera", help="再起動でカメラ番号が変わった場合のみ番号・パスを変更")
+    command.add_argument("--ur3-config", type=Path, help="UR3連携の設定JSON（指定時のみ接続）")
+    command.add_argument("--ur3-dry-run", action="store_true", help="実機接続せずUR3指令を確認")
     command.set_defaults(run=infer)
     return cli
 

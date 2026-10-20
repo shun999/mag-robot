@@ -1,0 +1,18 @@
+{
+  "robot_host": "192.168.11.20",
+  "robot_port": 30002,
+  "listen_host": "192.168.11.5",
+  "listen_port": 50001,
+  "speed": 1.0,
+  "acceleration": 0.5,
+  "stop_deceleration": 2.0,
+  "normal_direction": 1,
+  "anomaly_direction": -1,
+  "stable_count": 3,
+  "heartbeat_interval": 0.1,
+  "communication_timeout": 0.5,
+  "inference_timeout": 2.0,
+  "motion_period": 0.05,
+  "connect_timeout": 5.0,
+  "shutdown_timeout": 2.0
+}

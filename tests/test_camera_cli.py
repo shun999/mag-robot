@@ -54,7 +54,8 @@ def test_cli_missing_configuration_returns_actionable_error(capsys):
     assert "エラー" in capsys.readouterr().err
 
 
-def test_inference_clears_verdict_on_no_object_and_camera_disconnect(monkeypatch):
+@pytest.mark.parametrize("ur3_enabled", [False, True])
+def test_inference_clears_verdict_on_no_object_and_camera_disconnect(monkeypatch, ur3_enabled):
     from dino_ingot.cli import infer
     from dino_ingot.config import Config
 
@@ -64,7 +65,7 @@ def test_inference_clears_verdict_on_no_object_and_camera_disconnect(monkeypatch
     background = np.zeros((80, 120, 3), np.uint8)
     valid = background.copy()
     valid[20:60, 25:95] = 200
-    frames = iter([valid, background])
+    frames = iter([valid, valid, valid, background])
     model = MagicMock()
     model.predict.return_value = [1]
     model.decision_function.return_value = [0.7]
@@ -91,9 +92,34 @@ def test_inference_clears_verdict_on_no_object_and_camera_disconnect(monkeypatch
     monkeypatch.setattr("dino_ingot.cli.clear_failure", clear)
     monkeypatch.setattr("dino_ingot.cli.cv2.waitKey", lambda _: 0)
     monkeypatch.setattr("dino_ingot.cli.quit_requested", lambda *a: False)
+    robot = None
+    if ur3_enabled:
+        from dino_ingot.ur3 import UR3Config, WristController
+
+        robot = WristController(UR3Config(), dry_run=True)
+        monkeypatch.setattr("dino_ingot.ur3.load_ur3_config", lambda _: robot.config)
+        monkeypatch.setattr("dino_ingot.ur3.WristController", lambda *a, **kw: robot)
+
+        def cleared_after_stop(*args, **kwargs):
+            assert robot.stopped_confirmed
+            assert "STOP CONFIRMED" in kwargs["detail"]
+
+        clear.side_effect = cleared_after_stop
     with pytest.raises(RuntimeError, match="disconnected"):
-        infer(Namespace(model="test", camera=None))
+        infer(Namespace(
+            model="test", camera=None, ur3_config="ur3.json" if ur3_enabled else None,
+            ur3_dry_run=ur3_enabled,
+        ))
     assert show.call_args_list[0].args[-1].startswith("ANOMALY")
-    assert show.call_args_list[1].args[-1].startswith("NO OBJECT")
-    assert model.predict.call_count == 1
+    assert show.call_args_list[3].args[-1].startswith("NO OBJECT")
+    assert model.predict.call_count == 3
+    if ur3_enabled:
+        assert "cmd=-1" in show.call_args_list[2].kwargs["extra_text"]
+        assert "cmd=+0" in show.call_args_list[3].kwargs["extra_text"]
+        assert not robot._worker.is_alive()
     clear.assert_called_once()
+
+
+def test_dry_run_requires_ur3_configuration(capsys):
+    assert main(["infer", "--ur3-dry-run"]) == 1
+    assert "--ur3-config" in capsys.readouterr().err

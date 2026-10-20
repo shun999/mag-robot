@@ -54,7 +54,9 @@ def open_camera(config: CameraConfig):
         capture.release()
 
 
-def show_inspection(window: str, frame, region: Region, roi, text: str) -> None:
+def show_inspection(
+    window: str, frame, region: Region, roi, text: str, *, extra_text: str = ""
+) -> None:
     canvas = frame.copy()
     if roi:
         x, y, w, h = roi
@@ -63,9 +65,13 @@ def show_inspection(window: str, frame, region: Region, roi, text: str) -> None:
     if region.bbox:
         x, y, w, h = region.bbox
         cv2.rectangle(canvas, (x, y), (x + w, y + h), color, 2)
-    cv2.rectangle(canvas, (0, 0), (canvas.shape[1], 64), (0, 0, 0), cv2.FILLED)
+    cv2.rectangle(
+        canvas, (0, 0), (canvas.shape[1], 92 if extra_text else 64), (0, 0, 0), cv2.FILLED
+    )
     cv2.putText(canvas, text, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.65, color, 2)
     cv2.putText(canvas, region.reason, (10, 53), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+    if extra_text:
+        cv2.putText(canvas, extra_text, (10, 81), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
     # Bound display size; detection and stored images always retain original resolution.
     scale = min(1.0, 1280 / canvas.shape[1], 800 / canvas.shape[0])
     cv2.imshow(window, cv2.resize(canvas, None, fx=scale, fy=scale))
@@ -78,7 +84,7 @@ def show_inspection(window: str, frame, region: Region, roi, text: str) -> None:
     cv2.imshow("Ingot crop", preview)
 
 
-def clear_failure(window: str) -> None:
+def clear_failure(window: str, *, detail: str = "") -> None:
     """Replace both windows so a disconnected camera never leaves an old verdict."""
     blank = np.zeros((240, 800, 3), dtype=np.uint8)
     cv2.putText(
@@ -90,6 +96,8 @@ def clear_failure(window: str) -> None:
         (0, 0, 255),
         2,
     )
+    if detail:
+        cv2.putText(blank, detail, (10, 95), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 200, 255), 1)
     cv2.imshow(window, blank)
     cv2.imshow("Ingot crop", np.zeros((256, 256, 3), dtype=np.uint8))
     cv2.waitKey(1000)
