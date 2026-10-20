@@ -1,7 +1,7 @@
 """Ingot decisions and a leased, reverse-socket UR3 wrist controller.
 
-Only the URScript main thread issues motion commands. A separate robot thread
-receives heartbeats, so blocking socket reads never delay the motion loop.
+Only the URScript main thread issues motion commands. Separate robot threads
+receive heartbeats and enforce their deadline, independently of blocking reads.
 """
 
 import ipaddress
@@ -13,6 +13,8 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
+
+CB3_CYCLE_SECONDS = 0.008  # CB3 sync() consumes the remainder of a 125 Hz frame.
 
 
 @dataclass
@@ -122,16 +124,36 @@ class DecisionState:
 
 
 def control_script(config: UR3Config) -> str:
-    """CB3 PolyScope >= 3.5. No motion is possible until a valid direction arrives."""
+    """Target CB3 PolyScope 3.5.1; socket reads accept only two arguments.
+
+    The native read timeout is fixed at two seconds. A sync-based watchdog
+    enforces communication_timeout without waiting for that read to return.
+    """
     config.validate()
+    watchdog_ticks = math.ceil(config.communication_timeout / CB3_CYCLE_SECONDS)
     return f'''def ingot_wrist_control():
   global ingot_alive = True
   global ingot_direction = 0
   global ingot_stop_requested = False
+  global ingot_lease_ticks = 0
+  thread ingot_watchdog():
+    while ingot_alive:
+      sync()
+      enter_critical
+      if ingot_alive:
+        ingot_lease_ticks = ingot_lease_ticks + 1
+        if ingot_lease_ticks >= {watchdog_ticks}:
+          ingot_direction = 0
+          ingot_alive = False
+        end
+      end
+      exit_critical
+    end
+  end
   thread ingot_receive():
     local sequence = 0
     while ingot_alive:
-      local packet = socket_read_ascii_float(2, "ingot", timeout={config.communication_timeout})
+      local packet = socket_read_ascii_float(2, "ingot")
       local valid = False
       if packet[0] == 2:
         if packet[1] == sequence + 1:
@@ -151,25 +173,34 @@ def control_script(config: UR3Config) -> str:
         ingot_alive = False
         exit_critical
       else:
-        sequence = sequence + 1
+        local accepted = False
         enter_critical
-        ingot_direction = packet[2]
-        if packet[2] == 0:
-          ingot_stop_requested = True
+        if ingot_alive:
+          sequence = sequence + 1
+          ingot_lease_ticks = 0
+          ingot_direction = packet[2]
+          if packet[2] == 0:
+            ingot_stop_requested = True
+          end
+          accepted = True
         end
         exit_critical
-        if not socket_send_int(sequence, "ingot"):
-          enter_critical
-          ingot_direction = 0
-          ingot_alive = False
-          exit_critical
+        if accepted:
+          if not socket_send_int(sequence, "ingot"):
+            enter_critical
+            ingot_direction = 0
+            ingot_alive = False
+            exit_critical
+          end
         end
       end
     end
   end
   if socket_open("{config.listen_host}", {config.listen_port}, "ingot"):
-    if socket_send_line("READY ingot-v1", "ingot"):
-      local receiver = run ingot_receive()
+    local receiver = run ingot_receive()
+    local watchdog = run ingot_watchdog()
+    local ready = socket_send_line("READY ingot-v1", "ingot")
+    if ready:
       local active = 0
       local running = True
       while running:
@@ -204,7 +235,15 @@ def control_script(config: UR3Config) -> str:
         end
       end
       stopj({config.stop_deceleration})
-      kill receiver
+    else:
+      enter_critical
+      ingot_direction = 0
+      ingot_alive = False
+      exit_critical
+    end
+    kill receiver
+    kill watchdog
+    if ready:
       socket_send_line("STOPPED", "ingot")
     end
     socket_close("ingot")
